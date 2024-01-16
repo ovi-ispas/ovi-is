@@ -19,6 +19,8 @@ export default defineConfig({
     remixDevTools(),
     remix({
       ignoredRouteFiles: ['**/.*'],
+      // enable spa mode
+      unstable_ssr: false,
     }),
     mdx({
       remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],

@@ -9,20 +9,13 @@ import {
   ScrollRestoration,
 } from '@remix-run/react'
 import type { PropsWithChildren } from 'react'
-import type { Theme } from 'remix-themes'
-import { PreventFlashOnWrongTheme, useTheme } from 'remix-themes'
-
-import Header from './header'
 
 export function Document({
   children,
   title,
-  ssrTheme = null,
-}: PropsWithChildren<{ title?: string; ssrTheme?: Theme | null }>) {
-  const [theme] = useTheme()
-
+}: PropsWithChildren<{ title?: string }>) {
   return (
-    <html lang="en" className={theme ?? ''}>
+    <html lang="en" className="dark">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -37,12 +30,10 @@ export function Document({
         <meta name="twitter:site" content="@remix_run" />
         <meta name="twitter:title" content="Remix Jokes" />
         <Meta />
-        <PreventFlashOnWrongTheme ssrTheme={Boolean(ssrTheme)} />
         {title ? <title>{title}</title> : null}
         <Links />
       </head>
       <body className="font-display">
-        <Header />
         {children}
         <ScrollRestoration />
         <Scripts />
