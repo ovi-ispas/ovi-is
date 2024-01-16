@@ -12,6 +12,8 @@ import type { PropsWithChildren } from 'react'
 import type { Theme } from 'remix-themes'
 import { PreventFlashOnWrongTheme, useTheme } from 'remix-themes'
 
+import Header from './header'
+
 export function Document({
   children,
   title,
@@ -40,6 +42,7 @@ export function Document({
         <Links />
       </head>
       <body className="font-display">
+        <Header />
         {children}
         <ScrollRestoration />
         <Scripts />
