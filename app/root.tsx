@@ -1,11 +1,18 @@
 import './tailwind.css'
 
 import type { LinksFunction, MetaFunction } from '@remix-run/node'
-import { isRouteErrorResponse, Outlet, useRouteError } from '@remix-run/react'
+import {
+  isRouteErrorResponse,
+  Outlet,
+  useMatches,
+  useRouteError,
+} from '@remix-run/react'
 
 import { Document } from '~/components/document'
 
 import { ErrorAlert } from './components/error-alert'
+
+export const appDomain = 'ovi.is'
 
 export const links: LinksFunction = () => [
   // import the Google Fonts stylesheet
@@ -22,19 +29,29 @@ export const links: LinksFunction = () => [
 ]
 
 export const meta: MetaFunction = () => {
-  const description =
-    'Ovi Ispas - Web Developer from Timisoara, Romania, specialized in Front-End technologies.'
+  const description = `Ovi Ispas - Product oriented Web Developer. UI / UX / DX. | ${appDomain}`
 
   return [
+    { title: `${appDomain} | Ovi Ispas` },
     { name: 'description', content: description },
     { name: 'twitter:description', content: description },
-    { title: 'Ovi Ispas' },
   ]
 }
 
+function useRouteClassName() {
+  const matches = useMatches()
+  const leafRoute = matches[matches.length - 1].pathname
+  return leafRoute === '/'
+    ? 'home'
+    : leafRoute.startsWith('/posts')
+      ? 'posts'
+      : ''
+}
+
 export default function App() {
+  const bodyClassName = useRouteClassName()
   return (
-    <Document>
+    <Document bodyClassName={bodyClassName}>
       <Outlet />
     </Document>
   )
@@ -47,7 +64,7 @@ export function ErrorBoundary() {
   // handle thrown Responses (expected)
   if (isRouteErrorResponse(error)) {
     return (
-      <Document title={`${error.status} ${error.statusText}`}>
+      <Document title={`${error.status} ${error.statusText} | ${appDomain}`}>
         <div className="container py-4">
           <ErrorAlert title={`${error.status} Error`}>
             {error.data || error.statusText}
@@ -61,7 +78,7 @@ export function ErrorBoundary() {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
   return (
-    <Document title="Uh-oh!">
+    <Document title={`App Error | ${appDomain}`}>
       <div className="container py-4">
         <ErrorAlert>{errorMessage}</ErrorAlert>
       </div>

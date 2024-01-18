@@ -1,0 +1,267 @@
+---
+title: Self-Hosted Remix
+description: Deploy Remix apps on Digital Ocean
+published: 2024-01-18
+draft: false
+featured: false
+---
+
+export const meta = () => {
+  return [
+    { title: `${frontmatter.title} | ovi.is` },
+    {
+      name: 'description',
+      content: frontmatter.description,
+    },
+  ]
+}
+
+import { PostTitle } from '../../components/post-title'
+
+<PostTitle published={frontmatter.published} featured={frontmatter.featured}>
+  {frontmatter.title}
+</PostTitle>
+
+## 🛠 Remote Server Configuration
+
+### 🖥️ Virtual Machine setup
+
+For running the Docker Engine and a few Remix apps, a $6 [Digital Ocean Droplet](https://www.digitalocean.com/products/droplets) (1 shared virtual CPU, 1GB Memory, 25GB Disk Space) should be fine. Each Remix app takes about 150Mb of memory when running, and you can purge unused Docker images to save-up on disk space. You can also adjust the Droplet size later if needed.
+
+Digital Ocean also offers free [Reserved IPs](https://docs.digitalocean.com/products/networking/reserved-ips/details/pricing/) that are not charged for as long as they are connected to a Droplet - it's a good idea to have one associated to your remote server in case you ever decide to recreate it and it gets a different IP address.
+
+### 🐳 Docker setup
+
+If you create your remote server on Digital Ocean, you can either choose to use a 1-click install Droplet with [Docker preinstalled](https://marketplace.digitalocean.com/apps/docker) on it (recommended) or [add Docker yourself](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04). Check the instructions of your VM provider if you are using something other than Digital Ocean.
+
+### 🔐 SSH login setup
+
+If you use a private _rsa_ key type (`~/.ssh/id_rsa`) and the remote server is on **Ubuntu 20.04 or later** add `PubkeyAcceptedKeyTypes +ssh-rsa` to the remote server's `/etc/ssh/sshd_config` and restart the OpenSSH service (`sudo systemctl restart sshd`).
+
+### 🌎 DNS setup
+
+[Register a domain](https://www.namecheap.com/) and add the remote server's [nameservers](https://www.namecheap.com/support/knowledgebase/article.aspx/10375/2208/how-do-i-link-a-domain-to-my-digitalocean-account/) to your domain registrar so you can manage the DNS settings from the remote server (eg. `ns1.digitalocean.com`, `ns2.digitalocean.com`, `ns3.digitalocean.com`).
+
+To allow your apps to have dedicated subdomains associated to them, open your remote server's [DNS settings](https://cloud.digitalocean.com/networking/domains) and add your domain (eg. `example.com`) and an `A` type record with `*.example.com` as host and your server's (reserved) IP as value (eg. `123.123.123.123`).
+
+### ⛖ Nginx reverse proxy + SSL setup
+
+Install [Nginx](https://www.nginx.com/) (`sudo apt install nginx`) and allow access to it through your firewall (`sudo ufw allow 'Nginx Full'`).
+
+Install [Certbot](https://certbot.eff.org/) to automate Let's Encrypt SSL certificates generation and auto renewals:
+
+```shellscript
+sudo snap install core; sudo snap refresh core
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+sudo snap set certbot trust-plugin-with-root=ok
+sudo snap install certbot-dns-digitalocean
+```
+
+Set up DNS credentials for automatic certificates renewals by creating a [token](https://cloud.digitalocean.com/account/api/tokens) and adding it to `~/.secrets/certbot/digitalocean.ini`:
+
+```ini
+# DigitalOcean API credentials used by Certbot
+dns_digitalocean_token = 0000111122223333444455556666777788889999aaaabbbbccccddddeeeeffff
+```
+
+Acquire a wildcard certificate:
+
+```shellscript
+sudo certbot certonly \
+  --dns-digitalocean \
+  --dns-digitalocean-credentials ~/.secrets/certbot/digitalocean.ini \
+  -i nginx \
+  -d example.com \
+  -d '*.example.com'
+```
+
+Your certificate will be saved to `/etc/letsencrypt/live/example.com/fullchain.pem` and the key will be saved to `/etc/letsencrypt/live/example.com/privkey.pem`. You can verify the auto renewal setup with `sudo certbot renew --dry-run` and the Nginx status with `sudo systemctl status nginx`.
+
+## 🏗️ App Deployment Configuration
+
+> **Important**: Remix only loads environment variables and secrets automatically for [local development](https://remix.run/docs/en/main/guides/envvars#local-development).
+
+### 🏷️ Production variables
+
+Add the following deployment variables and any other environment variables used by your app in production to GitHub (eg. `DB_URL`):
+
+- `DEPLOY_NAME`: app name used for Docker image, container and app subdomain (eg. app)
+- `DEPLOY_DOMAIN`: remote server publically accessible root domain (eg. server.com)
+- `DEPLOY_HOST`: remote server IP to SSH into and deploy the app (eg. 209.12.34.56)
+- `DEPLOY_PORT`: remote server port to SSH into and deploy the app (eg. 22)
+- `DEPLOY_USERNAME`: remote server username to SSH into and deploy the app (eg. root)
+- `DEPLOY_PRODUCTION`: set to `"true"` to automatically deploy the main branch to production on push
+- `DEPLOY_PREVIEWS`: set to `"true"` to automatically deploy branch previews to staging
+
+For convenience you can also add them to a git ignored _.env.production_ file and upload them in bulk from the terminal using the [Github CLI](https://cli.github.com/):
+
+- `gh variable set -f .env.production`
+
+### 🔑 Production secrets
+
+Add the following deployment secrets and any other secrets used by your app in production to GitHub (eg. `SESSION_SECRET`):
+
+- `DEPLOY_SSHKEY`: private ssh key (from your local computer) pair to the public key that was added to the remote server's authorized keys to allow ssh connections
+
+You can also add these as well from the terminal using the [Github CLI](https://cli.github.com/):
+
+- `gh secret set DEPLOY_SSHKEY`
+- `gh secret set SESSION_SECRET`
+- ...
+
+### ⚙️ Deployment action workflow file
+
+Make sure to also add the environment variables and secrets used by your app in production (eg. `DB_URL`, `SESSION_SECRET`, etc.) to the **"Deploy on remote server via SSH"** section of `.github/workflows/deploy.yml` so they can be referenced by the Docker container when running the app.
+
+```yml title=".github/workflows/deploy.yml"
+
+name: 🚀 Deploy
+
+# automatically trigger the workflow on push to any branch and pull requests
+
+on:
+  push:
+    branches: - 'main'
+  pull_request:
+
+# allows us to manually trigger the workflow from GitHub's UI
+
+workflow_dispatch:
+
+# cancel any previous runs that are still in progress
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+  name: ✏️ Prettier
+  runs-on: ubuntu-latest
+  steps: - name: ⬇️ Checkout repo
+  uses: actions/checkout@v4
+
+        - name: ⎔ Setup node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 18
+
+        - name: 📦 Setup pnpm
+          uses: pnpm/action-setup@v2
+          with:
+            version: 8
+            run_install: false
+
+        - name: 📁 Get pnpm store directory
+          shell: bash
+          run: |
+            echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+        - name: ♻️ Setup pnpm cache
+          uses: actions/cache@v3
+          with:
+            path: ${{ env.STORE_PATH }}
+            key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+            restore-keys: |
+              ${{ runner.os }}-pnpm-store-
+
+        - name: 📥 Install deps
+          run: pnpm install
+
+        - name: 💅 Format
+          run: pnpm format
+
+  lint:
+  name: ⬣ ESLint
+  runs-on: ubuntu-latest
+  steps: - name: ⬇️ Checkout repo
+  uses: actions/checkout@v4
+
+        - name: ⎔ Setup node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 18
+
+        - name: 📦 Setup pnpm
+          uses: pnpm/action-setup@v2
+          with:
+            version: 8
+            run_install: false
+
+        - name: 📁 Get pnpm store directory
+          shell: bash
+          run: |
+            echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+        - name: ♻️ Setup pnpm cache
+          uses: actions/cache@v3
+          with:
+            path: ${{ env.STORE_PATH }}
+            key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+            restore-keys: |
+              ${{ runner.os }}-pnpm-store-
+
+        - name: 📥 Install deps
+          run: pnpm install
+
+        - name: 🔬 Lint
+          run: pnpm lint
+
+  typecheck:
+  name: ʦ TypeScript
+  runs-on: ubuntu-latest
+  steps: - name: ⬇️ Checkout repo
+  uses: actions/checkout@v4
+
+        - name: ⎔ Setup node
+          uses: actions/setup-node@v4
+          with:
+            node-version: 18
+
+        - name: 📦 Setup pnpm
+          uses: pnpm/action-setup@v2
+          with:
+            version: 8
+            run_install: false
+
+        - name: 📁 Get pnpm store directory
+          shell: bash
+          run: |
+            echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+        - name: ♻️ Setup pnpm cache
+          uses: actions/cache@v3
+          with:
+            path: ${{ env.STORE_PATH }}
+            key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+            restore-keys: |
+              ${{ runner.os }}-pnpm-store-
+
+        - name: 📥 Install deps
+          run: pnpm install
+
+        - name: 🛠 Generate Prisma Client
+          run: pnpm dlx prisma generate
+
+        - name: 🔎 Type check
+          run: pnpm typecheck
+
+```
+
+### 🎉 Done
+
+You should now be able to successfully deploy your app:
+
+- manually, by running `Deploy` from the GitHub actions interface
+- automatically, if you have set the `DEPLOY_PRODUCTION` and / or `DEPLOY_PREVIEWS` environment variables to `"true"`
+
+App deployment URLs:
+
+- The main branch will be deployed to `https://<repo-name>.<remote-server-domain>` (eg. app.example.com)
+- Branch previews / staging will be deployed to `https://<repo-name>-preview.<remote-server-domain>` (eg. app-preview.example.com)
+
+## 🔍 Bonus: Monitoring Tools
+
+- `docker stats`
+- `htop`

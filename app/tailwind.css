@@ -78,16 +78,28 @@
     @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
   }
   h2 {
-    @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+    @apply scroll-m-20 pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+  }
+  main h2 {
+    @apply mb-8 border-b border-sky-500 pt-8 first:pt-0;
   }
   h3 {
     @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+  }
+  main h3 {
+    @apply mt-8;
   }
   h4 {
     @apply scroll-m-20 text-xl font-semibold tracking-tight;
   }
   p {
     @apply leading-7 [&:not(:first-child)]:mt-6;
+  }
+  main p {
+    @apply leading-relaxed text-slate-400;
+  }
+  main a {
+    @apply text-sky-500 hover:animate-pulse hover:text-sky-400;
   }
   blockquote {
     @apply mt-6 border-l-2 pl-6 italic;
@@ -122,4 +134,136 @@
   .muted {
     @apply text-sm text-muted-foreground;
   }
+}
+
+/* React Slick Slider - start */
+
+.dr {
+  border: 1px solid red;
+}
+.db {
+  border: 1px solid blue;
+}
+.dg {
+  border: 1px solid green;
+}
+
+.slick-slider {
+  position: relative;
+
+  display: block;
+  box-sizing: border-box;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  -webkit-touch-callout: none;
+  -khtml-user-select: none;
+  -ms-touch-action: pan-y;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slick-list {
+  position: relative;
+
+  display: block;
+  overflow: hidden;
+
+  margin: 0;
+  padding: 0;
+}
+.slick-list:focus {
+  outline: none;
+}
+.slick-list.dragging {
+  cursor: pointer;
+  cursor: hand;
+}
+
+.slick-slider .slick-track,
+.slick-slider .slick-list {
+  -webkit-transform: translate3d(0, 0, 0);
+  -moz-transform: translate3d(0, 0, 0);
+  -ms-transform: translate3d(0, 0, 0);
+  -o-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
+
+.slick-track {
+  position: relative;
+  top: 0;
+  left: 0;
+
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.slick-track:before,
+.slick-track:after {
+  display: table;
+
+  content: '';
+}
+.slick-track:after {
+  clear: both;
+}
+.slick-loading .slick-track {
+  visibility: hidden;
+}
+
+.slick-slide {
+  display: none;
+  float: left;
+
+  height: 100%;
+  min-height: 1px;
+}
+[dir='rtl'] .slick-slide {
+  float: right;
+}
+.slick-slide img {
+  display: block;
+}
+.slick-slide.slick-loading img {
+  display: none;
+}
+.slick-slide.dragging img {
+  pointer-events: none;
+}
+.slick-initialized .slick-slide {
+  display: block;
+}
+.slick-loading .slick-slide {
+  visibility: hidden;
+}
+.slick-vertical .slick-slide {
+  display: block;
+
+  height: auto;
+
+  border: 1px solid transparent;
+}
+.slick-arrow.slick-hidden {
+  display: none;
+}
+
+/* React Slick Slider - end */
+
+/* Code highlighting */
+main code {
+  background-color: rgb(34 67 112);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: normal;
+  color: #b6c1d1;
+}
+main pre code {
+  overflow: auto;
+  background-color: rgba(2, 14, 32, 0.81);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-weight: normal;
 }

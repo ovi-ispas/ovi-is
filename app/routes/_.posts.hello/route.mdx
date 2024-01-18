@@ -1,0 +1,25 @@
+---
+title: Hello, World!
+description: First post
+published: 2024-01-17
+draft: false
+featured: true
+---
+
+export const meta = () => {
+  return [
+    { title: `${frontmatter.title} | ovi.is` },
+    {
+      name: 'description',
+      content: frontmatter.description,
+    },
+  ]
+}
+
+import { PostTitle } from '../../components/post-title'
+
+<PostTitle published={frontmatter.published} featured={frontmatter.featured}>
+  {frontmatter.title}
+</PostTitle>
+
+This is the first post.
