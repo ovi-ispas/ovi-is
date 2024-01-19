@@ -11,6 +11,7 @@ import {
 import { Document } from '~/components/document'
 
 import { ErrorAlert } from './components/error-alert'
+import { useGithubSPARedirect } from './utils/redirect'
 
 export const appDomain = 'ovi.is'
 
@@ -27,6 +28,8 @@ export const links: LinksFunction = () => [
     href: 'https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap',
   },
 ]
+
+export const scripts = () => [{ src: '/script.js', defer: true }]
 
 export const meta: MetaFunction = () => {
   const description = `Ovi Ispas - Product oriented Web Developer. UI / UX / DX. | ${appDomain}`
@@ -49,6 +52,8 @@ function useRouteClassName() {
 }
 
 export default function App() {
+  useGithubSPARedirect()
+
   const bodyClassName = useRouteClassName()
   return (
     <Document bodyClassName={bodyClassName}>
