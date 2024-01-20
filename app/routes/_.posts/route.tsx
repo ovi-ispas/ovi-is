@@ -32,7 +32,7 @@ export default function PostsLayoutRoute() {
       </TopSection>
       <main className="z-20 w-full max-w-[85ch] flex-1 px-4">
         {!isPostsIndex ? (
-          <article>
+          <article className="mb-40">
             <Outlet />
           </article>
         ) : (

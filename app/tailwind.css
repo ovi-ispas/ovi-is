@@ -80,13 +80,13 @@
   h2 {
     @apply scroll-m-20 pb-2 text-3xl font-semibold tracking-tight first:mt-0;
   }
-  main h2 {
+  article h2 {
     @apply mb-8 border-b border-sky-500 pt-8 first:pt-0;
   }
   h3 {
     @apply scroll-m-20 text-2xl font-semibold tracking-tight;
   }
-  main h3 {
+  article h3 {
     @apply mt-8;
   }
   h4 {
@@ -95,14 +95,20 @@
   p {
     @apply leading-7 [&:not(:first-child)]:mt-6;
   }
-  main p {
-    @apply leading-relaxed text-slate-400;
+  article p {
+    @apply leading-loose leading-relaxed text-slate-300;
   }
-  main a {
+  article a {
     @apply text-sky-500 hover:animate-pulse hover:text-sky-400;
   }
   blockquote {
     @apply mt-6 border-l-2 pl-6 italic;
+  }
+  article blockquote p {
+    @apply text-slate-500;
+  }
+  article strong {
+    @apply font-extrabold text-white;
   }
   table {
     @apply w-full;
@@ -253,14 +259,15 @@
 /* React Slick Slider - end */
 
 /* Code highlighting */
-main code {
+article code {
   background-color: rgb(34 67 112);
   border-radius: 4px;
   padding: 1px 4px;
   font-weight: normal;
   color: #b6c1d1;
 }
-main pre code {
+
+article pre code {
   overflow: auto;
   background-color: rgba(2, 14, 32, 0.81);
   border-radius: 4px;
