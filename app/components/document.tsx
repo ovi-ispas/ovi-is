@@ -7,8 +7,10 @@ import {
   Meta,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from '@remix-run/react'
-import type { PropsWithChildren } from 'react'
+import { type PropsWithChildren, useEffect } from 'react'
+import ReactGA from 'react-ga4'
 
 import { appDomain } from '~/root'
 
@@ -17,6 +19,17 @@ export function Document({
   title,
   bodyClassName,
 }: PropsWithChildren<{ title?: string; bodyClassName?: string }>) {
+  useEffect(() => {
+    ReactGA.initialize('G-D82386S2DD', {
+      testMode: process.env.NODE_ENV !== 'production',
+    })
+  }, [])
+  const location = useLocation()
+  useEffect(() => {
+    console.log('location:', location)
+    ReactGA.send({ hitType: 'pageview', page: location.pathname })
+  }, [location])
+
   return (
     <html lang="en" className="dark">
       <head>
