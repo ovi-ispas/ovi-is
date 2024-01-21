@@ -26,7 +26,6 @@ export function Document({
   }, [])
   const location = useLocation()
   useEffect(() => {
-    console.log('location:', location)
     ReactGA.send({ hitType: 'pageview', page: location.pathname })
   }, [location])
 
