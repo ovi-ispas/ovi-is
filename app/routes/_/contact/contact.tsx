@@ -37,7 +37,7 @@ export function Contact() {
           >
             Contact
           </motion.h2>
-          <p className="text-md flex items-center text-center font-extralight leading-relaxed tracking-wide text-sky-400 md:text-xl">
+          <p className="text-md flex items-center justify-center text-center font-extralight leading-relaxed tracking-wide text-sky-400 md:text-xl">
             <ContactIcon
               fill="#38bdf8"
               width={isSmallViewport() ? 16 : 22}
@@ -45,8 +45,18 @@ export function Contact() {
               className="mr-2"
             />
             Drop me a line at
-            <a href="mailto:hello@ovi.is" className="ml-2 font-bold text-white">
+            <a href="mailto:hello@ovi.is" className="mx-2 font-bold text-white">
               hello@ovi.is
+            </a>
+          </p>
+          <p className="text-md !mt-2 flex items-center justify-center text-center font-extralight leading-relaxed tracking-wide text-sky-400 md:text-xl">
+            <span className="mr-2 text-3xl text-sky-500">𝕏</span>
+            Follow me at{' '}
+            <a
+              href="https://twitter.com/ovi_ispas"
+              className="mx-2 font-bold text-white"
+            >
+              @ovi_ispas
             </a>
           </p>
         </div>

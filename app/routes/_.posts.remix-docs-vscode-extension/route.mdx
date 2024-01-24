@@ -1,0 +1,66 @@
+---
+title: Remix Docs VSCode Extension
+description: First post
+published: 2024-01-24
+draft: false
+featured: false
+---
+
+import img from './screenshot.gif'
+
+export const meta = () => {
+  return [
+    { title: `${frontmatter.title} | ovi.is` },
+    {
+      name: 'description',
+      content: frontmatter.description,
+    },
+  ]
+}
+
+import { PostTitle } from '../../components/post-title'
+
+<PostTitle published={frontmatter.published} featured={frontmatter.featured}>
+  {frontmatter.title}
+</PostTitle>
+
+## My First VSCode Extension
+
+> "He who has a WHY to live can bear almost any HOW." - Friedrich Nietzsche
+
+Without being so dramatic like the quotation above, I've been using VSCode for a very long time now, added a bunch of extension to it to support my workflow and preferred technologies, tried many themes until I finally settled to [NightOwl](https://marketplace.visualstudio.com/items?itemName=sdras.night-owl), customized the hell out of the key-bindings, and went into a long love-and-hate relationship with the [VSCodeVim](https://marketplace.visualstudio.com/items?itemName=vscodevim.vim) extension, but never thought of creating my own extension.
+
+I had no reason to create one, nor was I particularly interested how to, just out of technical curiosity. Until about a month ago.
+
+## The "Why"
+
+I've been learning and using [Remix](https://remix.run/) for some time, and I absolutely love it!
+
+I use the official [Remix Docs](https://docs.remix.run/) a lot for reference when I code, and also started answering questions on [Discord](https://rmx.as/discord) (by my own ability and experience, and by also quickly looking through the docs when I need to refresh my memory about some less used feature or weird use-case).
+
+> Known fact: Devs hate repetitive tasks and context-switching.
+
+Having to manually open a new browser tab, type the docs URL, and search for the thing that I'm looking for, is a repetitive task as well as context-switching from the editor that is right in front of me!
+
+I wanted to be able to search the docs from within VSCode, and get the results in a nice, readable format, prefferably **the latest docs content itself** (since I have the general structure in my mind, I usually know when and where something changes, and also need access to the latest `unstable_*` stuff too that has just been pushed).
+
+A perfect use-case for a VSCode extension.
+
+## The "How"
+
+I started by reading the [VSCode Extension API](https://code.visualstudio.com/api) docs and the [Extension Publishing Guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension), and poking around at [Alem Tuzlak](https://twitter.com/AlemTuzlak59192)'s [Remix Forge Extension](https://marketplace.visualstudio.com/items?itemName=CodeForge.remix-forge) source code, and to my surprise it took a much shorter time than I have anticipated.
+
+> Aside: Did you know that Alem recently started his own [YouTube channel](https://www.youtube.com/@alemtuzlak)?
+> If you're into Remix, go check it out, he's putting up great content!
+
+## The Result
+
+<img src={img} alt="Screenshot" />
+
+You can install it from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=ovi-ispas.remix-docs) or from within VSCode by pressing `Cmd + Shift + X` and searching for _"remix docs"_ and give it a try.
+
+Or you can take a peek into the [source code](https://github.com/ovi-ispas/remix-docs) and perhaps you will be inspired to create your own, whenever you find your WHY!
+
+> Happy coding and remember to RTFM! :)
+
+**#VSCodeExtension** **#Remix** **#Documentation**
