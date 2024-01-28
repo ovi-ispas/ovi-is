@@ -1,0 +1,222 @@
+---
+title: In-Memory Server-Side Caching
+description: Learn how to use in-memory server-side caching with Remix
+published: 2024-01-28
+draft: false
+featured: false
+---
+
+import screenshot1 from './screenshot1.png'
+import screenshot2 from './screenshot2.png'
+import screenshot3 from './screenshot3.png'
+
+export const meta = () => {
+  return [
+    { title: `${frontmatter.title} | ovi.is` },
+    {
+      name: 'description',
+      content: frontmatter.description,
+    },
+  ]
+}
+
+import { PostTitle } from '../../components/post-title'
+
+<PostTitle published={frontmatter.published} featured={frontmatter.featured}>
+  {frontmatter.title}
+</PostTitle>
+
+## Context
+
+> There are only two hard things in Computer Science: cache invalidation and naming things. -- Phil Karlton
+
+Before worrying about cache invalidation, let's first see how we can actually cache data in the first place and improve the performance of web apps. 🤔
+
+In-Memory Server-Side Caching is a technique that works by storing previously computed data in the web app memory on the server, and serving it to subsequent requests thus reducing the need for redundant computations.
+
+For example by storing common 3rd-party API request responses in memory, applications can avoid unnecessary calls to external APIs for identical requests.
+
+## Gotchas
+
+- This technique relies on **long-running server processes** that retain cached data over time. For example you can use it if you self-host your app on a VPS, but in contrast, serverless deployments such as those on Vercel or other serverless hosting providers lack long-standing server instances, making traditional In-Memory Server-Side Caching not applicable!
+
+- The in-memory server-side cache is a **shared resource**, available for everyone and isn't tied to specific users or their sessions. It helps speed up responses for all requests, making things faster and smoother for everyone using the application.
+
+## Setup
+
+1. Start by creating a new Remix app:
+
+```shellscript
+npx create-remix@latest
+```
+
+> **Note:** At the time of this writing the default template is not yet using the Remix Vite Plugin, but we'll address that as well.
+
+2. To prevent data from getting reset in development when HDR triggers modules reloading due to server-side code changes, we can use the following singleton utility.
+
+> **Note:** You don't need this if using Vite, since it has no issues with reloading modules in development during HDR. Feel free to skip creating this file and just use the `pokemonResultsCache` variable directly in the next step.
+
+Create an `/app/utils/` folder and add the `singleton.server.ts` file inside it with the following content:
+
+```ts showLineNumbers title="/app/utils/singleton.server.ts"
+// Borrowed & modified from https://github.com/jenseng/abuse-the-platform/blob/main/app/utils/singleton.ts
+// Thanks @jenseng!
+
+export const singleton = <Value>(
+  name: string,
+  valueFactory: () => Value
+): Value => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = global as any
+  g.__singletons ??= {}
+  g.__singletons[name] ??= valueFactory()
+  return g.__singletons[name]
+}
+```
+
+3. Now let's define our data structure that we will use for caching. We used an array of objects bellow, but you can use whatever you want. Each item in the array will contain the query string and the result of the API call.
+   Create a `cache.server.ts` file with the following content, inside the `/app/utils/` folder:
+
+```ts {8-11} showLineNumbers title="/app/utils/cache.server.ts"
+import { singleton } from './singleton.server'
+
+/* Until a server restart, this will be kept in memory and shared by all clients that connect to the server.
+Because we use the singleton utility, the data also won't get lost in development due to HDR */
+
+type PokemonResult = { query: string; result: string }
+
+export const pokemonResultsCache = singleton(
+  'pokemonResultsCache',
+  (): PokemonResult[] => []
+)
+```
+
+As mentioned above, for Vite we can directly use the `pokemonResultsCache` variable without the need for the singleton utility:
+
+```ts {3} showLineNumbers title="/app/utils/cache.server.ts"
+type PokemonResult = { query: string; result: string }
+
+export const pokemonResultsCache: PokemonResult[] = []
+```
+
+4. We are now ready to make requests and cache the results. In this example we will use the [PokeAPI](https://pokeapi.co/) as our 3rd-party API.
+
+Delete all the content inside `/app/routes/_index.tsx` and replace it with the following (the important parts are highlighted):
+
+```tsx showLineNumbers title="/app/routes/_index.tsx" {3, 7,17-25,30-32,38,40-43,47,61,67}
+import { LoaderFunctionArgs, json } from '@remix-run/node'
+import { Form, useLoaderData, useNavigation } from '@remix-run/react'
+import { pokemonResultsCache } from '../utils/cache.server'
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url)
+  const query = url.searchParams.get('query')
+
+  // not searching for anything
+  if (!query)
+    return json({
+      result: null,
+      cachedQueries: pokemonResultsCache.map((c) => c.query),
+    })
+
+  // if query result is already in cache return it
+  const cachedResult = pokemonResultsCache.find(
+    (result) => result.query === query
+  )
+  if (cachedResult) {
+    return json({
+      result: cachedResult.result,
+      cachedQueries: pokemonResultsCache.map((c) => c.query),
+    })
+  }
+
+  // fetch result from api
+  let result = null
+  try {
+    result = await fetch(`https://pokeapi.co/api/v2/pokemon/${query}`).then(
+      (res) => res.json()
+    )
+  } catch (error) {
+    console.log(error)
+  }
+
+  // add result to cache
+  pokemonResultsCache.push({ query, result })
+
+  return json({
+    result,
+    cachedQueries: pokemonResultsCache.map((c) => c.query),
+  })
+}
+
+export default function Index() {
+  const { result, cachedQueries } = useLoaderData<typeof loader>()
+  const navigation = useNavigation()
+
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif', lineHeight: '1.8' }}>
+      <h1>In Memory Server Side Cache</h1>
+      <Form method="get" action=".">
+        <input type="text" name="query" placeholder="Pokemon name" />
+        <button>
+          {navigation.state !== 'idle' ? 'Searching...' : 'Search'}
+        </button>
+      </Form>
+      <h2>Cached Queries</h2>
+      <pre style={{ border: '1px solid', padding: 10 }}>
+        {JSON.stringify(cachedQueries, null, 2)}
+      </pre>
+      {result ? (
+        <>
+          <h2>Result for {result.name}</h2>
+          <pre style={{ border: '1px solid', padding: 10 }}>
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        </>
+      ) : (
+        <h2>No Results</h2>
+      )}
+    </div>
+  )
+}
+```
+
+In the above code's **loader**:
+
+- we first get the query string from the URL
+- then we check if the query result is already in the cache, and if so we return it
+- if not, we fetch the result from the API and add it to the cache
+- finally we return the result and the cached queries
+
+In the **route component** we use the `useLoaderData` hook to get the result and the cached queries from the loader function and display them.
+
+## Results
+
+After a cold server restart, with the In-Memory Server-Side Cache empty, the API will be hit and the request for the Pikachu pokemon plus the content of our page takes about **245ms** (which is already pretty fast). We then store the result to in-memory server-side cache and display it.
+
+<img src={screenshot1} alt="Screenshot" />
+
+Now let's clear the Browser Cache, to make sure the next request is not served from disk cache. With the Chrome Inspector open, right click on the reload button and select "Empty cache and hard reload".
+
+<img src={screenshot2} alt="Screenshot" />
+
+The page will be reloaded but this time instead of hitting the API, the request will be served from the in-memory server-side cache almost instantly, taking only **56ms** to load our page! That is **4x faster**, and the difference would be even more dramatic if the 3rd-party API that we were using was a slow one.
+
+<img src={screenshot3} alt="Screenshot" />
+
+> **Note:** If you open a different Browser (or an Incognito window) and search for "pikachu" you will notice the cache is already available there as well!
+
+## Source Code
+
+You can find the source code for this example on Github, both for the default template and for the Vite template:
+
+- [https://github.com/ovi-ispas/in-memory-server-side-cache](https://github.com/ovi-ispas/in-memory-server-side-cache)
+- [https://github.com/ovi-ispas/in-memory-server-side-cache-vite](https://github.com/ovi-ispas/in-memory-server-side-cache-vite)
+
+This was just one out of the many possible approaches to enhance web apps performance, along with CDN Caching, Browser Caching or In-Memory Client-Side Caching.
+
+> In future posts we'll explore other caching techniques as well, but until then I hope that you now have an additional technique under your belt that you can use whenever needed. Happy caching!
+
+P.S. If you like content like this, consider [following me on Twitter](https://twitter.com/ovi_ispas) to get notified when new posts come out! 🐦
+
+**#InMemoryCache** **ServerSideCache** **#Remix**

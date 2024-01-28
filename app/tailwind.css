@@ -110,6 +110,18 @@
   article strong {
     @apply font-extrabold text-white;
   }
+  article figure {
+    @apply my-8;
+  }
+
+  article figcaption {
+    @apply mb-2 mt-4 pl-1 text-sky-500;
+  }
+
+  article [data-highlighted-line] {
+    background: rgb(34 67 112);
+  }
+
   table {
     @apply w-full;
   }
@@ -124,6 +136,9 @@
   }
   ul {
     @apply my-6 ml-6 list-disc [&>li]:mt-2;
+  }
+  article ol {
+    @apply mt-4 list-inside list-decimal;
   }
   code {
     @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
@@ -273,4 +288,33 @@ article pre code {
   border-radius: 4px;
   padding: 8px 16px;
   font-weight: normal;
+}
+
+/* Syntax highlighting line numbers */
+article code[data-line-numbers] {
+  counter-reset: line;
+}
+
+article code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+
+  /* Other styling */
+  display: inline-block;
+  width: 1rem;
+  margin-right: 2rem;
+  text-align: right;
+  color: gray;
+}
+
+article
+  code[data-line-numbers][data-line-numbers-max-digits='2']
+  > [data-line]::before {
+  width: 2rem;
+}
+
+article
+  code[data-line-numbers][data-line-numbers-max-digits='3']
+  > [data-line]::before {
+  width: 3rem;
 }
