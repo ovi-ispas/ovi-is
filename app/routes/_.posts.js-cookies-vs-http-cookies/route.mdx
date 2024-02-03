@@ -1,0 +1,247 @@
+---
+title: JS Cookies vs HTTP Cookies
+description: Learn how to efficiently use cookies Remix
+published: 2024-02-03
+draft: false
+featured: false
+---
+
+import meme from './meme.png'
+import screenshot1 from './screenshot1.gif'
+import screenshot2 from './screenshot2.gif'
+
+export const meta = () => {
+  return [
+    { title: `${frontmatter.title} | ovi.is` },
+    {
+      name: 'description',
+      content: frontmatter.description,
+    },
+  ]
+}
+
+import { PostTitle } from '../../components/post-title'
+
+<PostTitle published={frontmatter.published} featured={frontmatter.featured}>
+  {frontmatter.title}
+</PostTitle>
+
+## Context
+
+> "If the only tool you have is a hammer, it is tempting to treat everything as if it were a nail." - Abraham Maslow
+
+There's a newer generation of web developers (usually who have started their careers in the past 10 years and worked mostly on Front-End related technologies) that is entirely possible to have gotten away with **only dealing with cookies in the context of JavaScript**.
+
+Maybe they where not particularly interested in Back-End related technologies or Full-Stack frameworks (like Laravel or Rails), and the reality is just that SPAs (Single Page Applications) have eaten the world for the past decade.
+
+**AND THAT IS PERFECTLY FINE**, but I'm here to tell you that things can be a lot better than that! 😎
+
+> I don't want to turn this post into an "Old Man Yells at Cloud" meme, I only want to make the case that there are performance and UX gains by not only relying on "the SPA way" of doing things.
+
+<img src={meme} alt="Old Man Yells at Cloud meme" className="mx-auto w-1/2" />
+
+## Disclaimer
+
+> **There is no such thing as "JS Cookies"** - ALL cookies are HTTP Cookies! I only use this term here to refer to cookies that are set and read using JavaScript. It's also important to mention that there is a **"HTTPOnly"** cookie attribute too, that acts as a security feature to prevent JavaScript from accessing (reading or updating) a cookie that has such an attribute. You can read more about cookies [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies).
+
+## The Problem: Handling Cookies by only using JavaScript (SPA method)
+
+### Implementation
+
+1. Lets start by creating a new Remix app:
+
+```shellscript
+npx create-remix@latest
+```
+
+2. Delete the contents of `/app/root.tsx` and replace it with the following (important lines are highlighted):
+
+```tsx title="/app/root.tsx" {14-19,35-36} showLineNumbers
+import {
+  Links,
+  LiveReload,
+  Meta,
+  Scripts,
+  ScrollRestoration,
+} from '@remix-run/react'
+import { useEffect, useRef } from 'react'
+
+export default function App() {
+  const colorInputRef = useRef<HTMLInputElement>(null)
+
+  // After hydration, read the background color from the cookie and set it on the body
+  useEffect(() => {
+    const cookies = document.cookie.split(';')
+    const bgColorCookie = cookies.find((cookie) => cookie.includes('bgColor'))
+    const bgColorCookieValue = bgColorCookie?.split('=')[1]
+    document.body.style.backgroundColor = bgColorCookieValue ?? '#ffffff'
+  }, [])
+
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <h1>JS Cookies</h1>
+        <input type="color" defaultValue="#ffffff" ref={colorInputRef} />
+        <button
+          onClick={() => {
+            const color = colorInputRef.current?.value as string
+            document.body.style.backgroundColor = color
+            document.cookie = `bgColor=${color}`
+          }}
+        >
+          Set background color
+        </button>
+        <ScrollRestoration />
+        <Scripts />
+        <LiveReload />
+      </body>
+    </html>
+  )
+}
+```
+
+- when we click the **"Set background color"** button, we set the page background to that value and save it to a cookie using JavaScript (**lines 35-36**)
+- on page (re)load, AFTER the JavaScript has loaded on the page and React completed the page hydration, inside a `useEffect` we read the value from the cookie using JavaScript and set the page background color. If we never changed the page background color and there is no cookie yet, we default to white. (**lines 14-19**)
+
+### Result
+
+The above implementation is simple and the page works as expected, but there is an ugly UX issue.
+
+When the page loads (especially on a slower connection that takes longer - notice bellow how we throttled the Network to be "Fast 3G"), there is a time period just before the JavaScript loads and sets the background color when **the page is temporarily white**. 🤢
+
+Even on a fast connection, there is still a noticeable "flash" of white before the JavaScript sets the background color! 🤮
+
+> This happens because even if the cookie is already present locally in the browser before reloading the page, there is no way to use JavaScript to read it until... well, JavaScript has loaded and executed on the page!
+
+<img src={screenshot1} alt="Screenshot" />
+
+## The Solution: Handling Cookies by using the HTTP Request/Response Cycle
+
+### Implementation
+
+Lets see if we can do better than our previous attempt and try again!
+
+> If you want an overview about using cookies in Remix you can find it [here](https://remix.run/docs/en/main/utils/cookies).
+
+1. Start by creating a brand new Remix app:
+
+```shellscript
+npx create-remix@latest
+```
+
+2. Add a new file called `/app/cookies.server.ts` and create a logical container to handle our cookie, by using the `createCookie` utility that Remix provides.
+
+```ts title="/app/cookies.server.ts" showLineNumbers
+import { createCookie } from '@remix-run/node'
+
+// Create a logical container for managing the background color cookie
+export const bgColorCookie = createCookie('bgColor')
+```
+
+3. Delete the contents of `/app/root.tsx` and replace it with the following (important lines are highlighted):
+
+```tsx title="/app/root.tsx" {16,21-22,24,32-34,38,44,55,57} showLineNumbers
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  json,
+  redirect,
+} from '@remix-run/node'
+import {
+  Form,
+  Links,
+  LiveReload,
+  Meta,
+  Scripts,
+  ScrollRestoration,
+  useLoaderData,
+} from '@remix-run/react'
+import { bgColorCookie } from './cookies.server'
+
+// When generating the page on the server at request time, read the background
+// color from the cookie that the browser sends along with the incoming request
+export async function loader({ request }: LoaderFunctionArgs) {
+  const cookieHeader = request.headers.get('Cookie')
+  const cookie = await bgColorCookie.parse(cookieHeader)
+
+  return json({ bgColor: cookie?.bgColor })
+}
+
+// If the background color has changed, update the cookie object and instruct
+// the browser in the following redirect to reset the cookie with the new value
+export async function action({ request }: ActionFunctionArgs) {
+  const formActionData = await request.formData()
+
+  const cookieHeader = request.headers.get('Cookie')
+  const cookie = (await bgColorCookie.parse(cookieHeader)) ?? {}
+  cookie.bgColor = formActionData.get('bgColor')
+
+  return redirect('.', {
+    headers: {
+      'Set-Cookie': await bgColorCookie.serialize(cookie),
+    },
+  })
+}
+
+export default function App() {
+  const { bgColor } = useLoaderData<typeof loader>()
+
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+      </head>
+      {/* The value will already be embedded in the page even before hydration - no white screen */}
+      <body style={{ backgroundColor: bgColor }}>
+        <h1>HTTP Cookies</h1>
+        <Form action="." method="post">
+          <input type="color" name="bgColor" defaultValue="#ffffff" />{' '}
+          <button>Set background color</button>
+        </Form>
+        <ScrollRestoration />
+        <Scripts />
+        <LiveReload />
+      </body>
+    </html>
+  )
+}
+```
+
+- when we click the "Set background color" button, the form on the page sends a POST request to our action (**line 57**)
+- inside our `action`, we use the cookie logical container (that we have created in `/app/cookies.server.ts` and imported on **line 16**) to parse the cookie that we are interested in (out of all the cookies that came in the request headers) and update its value to whatever the form has sent (**lines 32-34**)
+- we then return a redirect and instruct the browser to reset the cookie with the new value (**line 38**)
+- on page (re)load, the `loader` function uses the cookie logical container to parse the cookie that we are interested in (out of all the cookies that came in the request headers) and send its value to the route component (**lines 21-22 and 24**)
+- because the route component is used to create the page at request time, it can get the the cookie's value from the loader (**line 44**) and directly embed it in the HTML as a static value (**line 55**) even BEFORE the page is actually sent to the browser and hydration happens!
+
+### Result
+
+This second implementation is a bit more complex but it's a lot better than the first one in terms of UX! **There is no more "flash" of white** before the JavaScript loads on the page, because the value is already embedded in the page and **we don't have to wait for JavaScript at all to read it**!
+
+> **Note:** You might notice there's a slight delay when initially setting the background color. That's because we are using a form POST request and a `redirect` to reset the cookie and the browser has to make a round trip to the server and back to use the new value.
+> For the sake of simplicity and to keep this post centered only around cookies, we haven't addressed that here but we can **EASILY** make that seam instant by using Remix [Optimistic UI](https://remix.run/docs/en/main/discussion/pending-ui#record-updates) features!
+
+Check it out:
+
+<img src={screenshot2} alt="Screenshot" />
+
+## Conclusion
+
+> I hope that this post has helped clear a bit of the confusion around using cookies, and has shown you that there are better ways to handle them than just using JavaScript. 🍪
+
+You can find the source code for this example on Github, both for the JS Cookies and the HTTP Cookies implementations:
+
+- [https://github.com/ovi-ispas/js-cookies](https://github.com/ovi-ispas/js-cookies)
+- [https://github.com/ovi-ispas/http-cookies](https://github.com/ovi-ispas/http-cookies)
+
+P.S. If you like content like this, consider [following me on Twitter](https://twitter.com/ovi_ispas) to get notified when new posts come out! 🐦
+
+**#BetterUX** **#Cookies** **#Remix**

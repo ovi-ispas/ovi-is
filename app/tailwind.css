@@ -110,6 +110,9 @@
   article strong {
     @apply font-extrabold text-white;
   }
+  article img {
+    @apply my-8;
+  }
   article figure {
     @apply my-8;
   }
