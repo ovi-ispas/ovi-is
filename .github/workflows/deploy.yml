@@ -130,8 +130,7 @@ jobs:
         run: pnpm install
 
       - name: 🛠 Generate Prisma Client
-        run: pnpm dlx prisma --schema=./schema.prisma generate
-
+        run: pnpm dlx prisma generate --schema=./prisma/schema.prisma
       - name: 🔎 Type check
         run: pnpm typecheck
 
