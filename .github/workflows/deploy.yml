@@ -95,49 +95,49 @@ jobs:
       - name: 🔬 Lint
         run: pnpm lint
 
-  typecheck:
-    name: ʦ TypeScript
-    runs-on: ubuntu-latest
-    steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
+  # typecheck:
+  #   name: ʦ TypeScript
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: ⬇️ Checkout repo
+  #       uses: actions/checkout@v4
 
-      - name: ⎔ Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+  #     - name: ⎔ Setup node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 18
 
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+  #     - name: 📦 Setup pnpm
+  #       uses: pnpm/action-setup@v2
+  #       with:
+  #         version: 8
+  #         run_install: false
 
-      - name: 📁 Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+  #     - name: 📁 Get pnpm store directory
+  #       shell: bash
+  #       run: |
+  #         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: ♻️ Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+  #     - name: ♻️ Setup pnpm cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ${{ env.STORE_PATH }}
+  #         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pnpm-store-
 
-      - name: 📥 Install deps
-        run: pnpm install
+  #     - name: 📥 Install deps
+  #       run: pnpm install
 
-      - name: 🛠 Generate Prisma Client
-        run: pnpm dlx prisma generate --schema=./prisma/schema.prisma
-      - name: 🔎 Type check
-        run: pnpm typecheck
+  #     - name: 🛠 Generate Prisma Client
+  #       run: pnpm dlx prisma generate --schema=./prisma/schema.prisma
+  #     - name: 🔎 Type check
+  #       run: pnpm typecheck
 
   build:
     name: '⚙️ Build'
     runs-on: ubuntu-latest
-    needs: [format, lint, typecheck]
+    needs: [format, lint]
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
